@@ -1,0 +1,70 @@
+run:
+    skip-dirs:
+        - .gen
+        - client
+        - plz-out
+        - lib
+
+    skip-files:
+        - ".*_gen\\.go$"
+        - "zz_generated\\..*\\.go$"
+
+    timeout: 10m
+
+linters-settings:
+    golint:
+        min-confidence: 0.9
+    gocyclo:
+        min-complexity: 15
+    goimports:
+        local-prefixes: github.com/banzaicloud/pipeline/
+    depguard:
+        list-type: blacklist
+        include-go-root: false
+        packages:
+            - github.com/prometheus/common/log
+        packages-with-error-messages:
+            github.com/prometheus/common/log: "Global logger is deprecated. Inject a logger here. If you are trying to log in a function, chances are you should make it a struct."
+
+linters:
+    enable-all: true
+    disable:
+        - funlen
+        - maligned
+        - wsl
+        - gomnd
+        - godot
+
+        # TODO: fixme
+        - gosec
+        - megacheck
+        - varcheck
+
+        # Disable govet for now because it fails on Circle
+        - govet
+
+        # TODO: fixme
+        - nestif
+        - exhaustive
+        - nlreturn
+        - noctx
+
+        - goerr113
+        - bodyclose
+        - dupl
+        - gochecknoinits
+        - gocognit
+        - goconst
+        - gocritic
+        - gocyclo
+        - godox
+        - interfacer
+        - lll
+        - nakedret
+        - prealloc
+        - scopelint
+        - stylecheck
+        - testpackage
+        - unparam
+
+    fast: false

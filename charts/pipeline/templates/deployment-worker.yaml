@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pipeline.fullname" . }}-worker
+  labels:
+    {{ include "pipeline-worker.labels" . | nindent 4 }}
+    {{- with .Values.worker.deploymentLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- with .Values.worker.deploymentAnnotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.worker.replicaCount }}
+  strategy:
+    {{ toYaml .Values.worker.strategy | nindent 4 }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "pipeline.name" . }}-worker
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      name: {{ include "pipeline.fullname" . }}
+      labels:
+        app.kubernetes.io/name: {{ include "pipeline.name" . }}-worker
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum | quote }}
+    spec:
+      hostAliases:
+        {{- toYaml (default .Values.hostAliases .Values.worker.hostAliases) | nindent 8 }}
+      containers:
+      - name: pipeline
+        image: {{ default .Values.image.repository .Values.worker.image.repository }}:{{ default .Values.image.tag .Values.worker.image.tag }}
+        imagePullPolicy: {{ default .Values.image.pullPolicy .Values.worker.image.pullPolicy }}
+        command: ["/worker"]
+        env:
+          # Database password from secret
+          {{- if .Values.configuration.database.password }}
+          - name: PIPELINE_DATABASE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "pipeline.fullname" . }}-database
+                key: password
+          {{- end }}
+          # Authentication configuration
+          - name: PIPELINE_AUTH_OIDC_CLIENTID
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "pipeline.fullname" . }}
+                key: clientId
+          - name: PIPELINE_AUTH_OIDC_CLIENTSECRET
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "pipeline.fullname" . }}
+                key: clientSecret
+          - name: PIPELINE_AUTH_TOKEN_SIGNINGKEY
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "pipeline.fullname" . }}
+                key: tokenSigningKey
+
+          # Vault configuration
+          - name: VAULT_ADDR
+            value: {{ .Values.configuration.vault.address }}
+          - name: VAULT_SKIP_VERIFY
+            value: {{ .Values.configuration.vault.insecure | quote }}
+
+          # Additional environment variables
+          {{- if .Values.extraEnvs }}
+          {{ toYaml .Values.extraEnvs | nindent 10 }}
+          {{- end }}
+        resources:
+          {{ toYaml .Values.worker.resources | nindent 12 }}
+        volumeMounts:
+          - name: config-volume
+            mountPath: /config
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ include "pipeline.fullname" . }}
+        {{- if .Values.worker.extraVolumes }}
+        {{ toYaml .Values.worker.extraVolumes | nindent 8 }}
+        {{- end }}
+      serviceAccountName: {{ template "pipeline.serviceAccountName" . }}

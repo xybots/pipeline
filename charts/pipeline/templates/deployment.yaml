@@ -1,0 +1,126 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pipeline.fullname" . }}
+  labels:
+    {{ include "pipeline.labels" . | nindent 4 }}
+    {{- with .Values.deploymentLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- with .Values.deploymentAnnotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+     {{ toYaml .Values.strategy | nindent 4 }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "pipeline.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      name: {{ include "pipeline.fullname" . }}
+      labels:
+        app.kubernetes.io/name: {{ include "pipeline.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum | quote }}
+      {{- if .Values.metrics.enabled  }}
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: {{ .Values.metrics.port | quote }}
+      {{- end }}
+    spec:
+      hostAliases:
+        {{- toYaml .Values.hostAliases | nindent 8 }}
+      containers:
+      - name: pipeline
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        args: ["/pipeline", "--addr=0.0.0.0:{{ .Values.service.internalPort }}", "--telemetry-addr=0.0.0.0:9900"]
+        env:
+          - name: PIPELINE_TELEMETRY_ENABLED
+            value: {{ .Values.metrics.enabled | quote }}
+          # Database password from secret
+          {{- if .Values.configuration.database.password }}
+          - name: PIPELINE_DATABASE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "pipeline.fullname" . }}-database
+                key: password
+          {{- end }}
+          # Authentication configuration
+          - name: PIPELINE_AUTH_OIDC_CLIENTID
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "pipeline.fullname" . }}
+                key: clientId
+          - name: PIPELINE_AUTH_OIDC_CLIENTSECRET
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "pipeline.fullname" . }}
+                key: clientSecret
+          - name: PIPELINE_AUTH_TOKEN_SIGNINGKEY
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "pipeline.fullname" . }}
+                key: tokenSigningKey
+
+          - name: PIPELINECTL_API_URL
+            value: https://127.0.0.1:9090
+          - name: PIPELINECTL_API_VERIFY
+            value: "false"
+
+          # Vault configuration
+          - name: VAULT_ADDR
+            value: {{ .Values.configuration.vault.address }}
+          - name: VAULT_SKIP_VERIFY
+            value: {{ .Values.configuration.vault.insecure | quote }}
+
+          # Additional environment variables
+          {{- if .Values.extraEnvs }}
+          {{ toYaml .Values.extraEnvs | nindent 10 }}
+          {{- end }}
+        ports:
+          {{- if .Values.metrics.enabled }}
+          - name: metrics
+            containerPort: {{ .Values.metrics.port }}
+          {{- end }}
+          - name: pipeline
+            containerPort: {{ .Values.service.internalPort }}
+
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.configuration.pipeline.basePath }}/api
+            port: {{ .Values.service.internalPort }}
+            scheme: HTTPS
+          initialDelaySeconds: 15
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.configuration.pipeline.basePath }}/api
+            port: {{ .Values.service.internalPort }}
+            scheme: HTTPS
+          initialDelaySeconds: 10
+        resources:
+          {{ toYaml .Values.resources | nindent 12 }}
+        volumeMounts:
+          - name: config-volume
+            mountPath: /config
+          - name: pipeline-tls
+            mountPath: /tls
+          {{- if .Values.extraVolumeMounts }}
+          {{ toYaml .Values.extraVolumeMounts | nindent 10 }}
+          {{- end }}
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ include "pipeline.fullname" . }}
+        - name: pipeline-tls
+          secret:
+            secretName: {{ include "pipeline-tls-secret-name" . }}
+        {{- if .Values.extraVolumes }}
+        {{ toYaml .Values.extraVolumes | nindent 8}}
+        {{- end }}
+      serviceAccountName: {{ template "pipeline.serviceAccountName" . }}

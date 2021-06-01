@@ -1,0 +1,833 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Amazon EKS - Node Group
+
+Metadata:
+  "AWS::CloudFormation::Interface":
+    ParameterGroups:
+      - Label:
+          default: EKS Cluster
+        Parameters:
+          - ClusterName
+          - ClusterControlPlaneSecurityGroup
+          - CustomNodeSecurityGroups
+          - NodeSecurityGroup
+      - Label:
+          default: Worker Node Configuration
+        Parameters:
+          - NodeGroupName
+          - NodeAutoScalingGroupMinSize
+          # - NodeAutoScalingGroupDesiredCapacity
+          - NodeAutoScalingGroupMaxSize
+          - NodeAutoScalingInitSize # Note: in place of NodeAutoScalingGroupDesiredCapacity for backward compatibility.
+          - NodeInstanceType
+          # - NodeImageIdSSMParam
+          - NodeImageId
+          - NodeSpotPrice
+          - NodeVolumeEncryptionEnabled
+          - NodeVolumeEncryptionKeyARN
+          - NodeVolumeSize
+          - KeyName
+          - BootstrapArguments
+          - KubeletExtraArguments
+          - UseInstanceStore
+          - DisableIMDSv1
+          - StackTags
+          - TemplateVersion
+      - Label:
+          default: Worker Network Configuration
+        Parameters:
+          - VpcId
+          - Subnets
+
+Parameters:
+  BootstrapArguments:
+    Type: String
+    Default: ""
+    Description: "Additional arguments to pass to the bootstrap script beside the kubelet parameters. See files/bootstrap.sh in https://github.com/awslabs/amazon-eks-ami"
+
+  ClusterAutoscalerEnabled:
+    Type: String
+    Description: Enable Cluster Autoscaler (true/false)
+
+  ClusterControlPlaneSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup::Id"
+    Description: The security group of the cluster control plane.
+
+  ClusterName:
+    Type: String
+    Description: The cluster name provided when the cluster was created. If it is incorrect, nodes will not be able to join the cluster.
+
+  CustomNodeSecurityGroups:
+    Type: String
+    Default: ""
+    Description: Comma separated list of security groups for all nodes in the pool.
+
+  DisableIMDSv1:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "false"
+      - "true"
+
+  KeyName:
+    Type: String # Note: not using "AWS::EC2::KeyPair::KeyName", because it implicitly validates the value to existing keys and we want to allow using the empty value as well, see: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html .
+    Description: The EC2 Key Pair to allow SSH access to the instances
+
+  # NodeAutoScalingGroupDesiredCapacity:
+  #   Type: Number
+  #   Default: 1
+  #   Description: Desired capacity of Node Group ASG.
+
+  KubeletExtraArguments:
+      Type: String
+      Default: ""
+      Description: "Arguments to pass to the bootstrap script as kubelet parameters."
+
+  NodeAutoScalingGroupMaxBatchSize:
+    Type: Number
+    Default: 2
+    Description: Maximum number of nodes to be updated at once during a rolling update.
+
+  NodeAutoScalingGroupMaxSize:
+    Type: Number
+    Default: 3
+    Description: Maximum size of Node Group ASG. Set to at least 1 greater than NodeAutoScalingGroupDesiredCapacity.
+
+  NodeAutoScalingGroupMinInstancesInService:
+    Type: Number
+    Default: 0
+    Description: Minimum number of nodes to be kept in service at any given time during a rolling update. This value must be less than NodeAutoScalingGroupMaxSize.
+
+  NodeAutoScalingGroupMinSize:
+    Type: Number
+    Default: 1
+    Description: Minimum size of Node Group ASG.
+
+  NodeAutoScalingInitSize:
+    Type: Number
+    Default: 1
+    Description: (In place of NodeAutoScalingGroupDesiredCapacity) The initial size of Node Group ASG.
+
+  NodeGroupName:
+    Type: String
+    Description: Unique identifier for the Node Group.
+
+  NodeImageId:
+    Type: String
+    Description: (Optional) Specify your own custom image ID. This value overrides any AWS Systems Manager Parameter Store value specified above.
+
+  # NodeImageIdSSMParam:
+  #   Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
+  #   Default: /aws/service/eks/optimized-ami/1.17/amazon-linux-2/recommended/image_id
+  #   Description: AWS Systems Manager Parameter Store parameter of the AMI ID for the worker node instances. Change this value to match the version of Kubernetes you are using.
+
+  NodeInstanceRoleId:
+    Type: String
+    Description: The role for node IAM profile
+
+  NodeInstanceType:
+    Type: String
+    Default: t2.medium
+    AllowedValues:
+      - a1.medium
+      - a1.large
+      - a1.xlarge
+      - a1.2xlarge
+      - a1.4xlarge
+      - c1.medium
+      - c1.xlarge
+      - c3.large
+      - c3.xlarge
+      - c3.2xlarge
+      - c3.4xlarge
+      - c3.8xlarge
+      - c4.large
+      - c4.xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - c5.large
+      - c5.xlarge
+      - c5.2xlarge
+      - c5.4xlarge
+      - c5.9xlarge
+      - c5.12xlarge
+      - c5.18xlarge
+      - c5.24xlarge
+      - c5.metal
+      - c5d.large
+      - c5d.xlarge
+      - c5d.2xlarge
+      - c5d.4xlarge
+      - c5d.9xlarge
+      - c5d.12xlarge
+      - c5d.18xlarge
+      - c5d.24xlarge
+      - c5d.metal
+      - c5n.large
+      - c5n.xlarge
+      - c5n.2xlarge
+      - c5n.4xlarge
+      - c5n.9xlarge
+      - c5n.18xlarge
+      - c6g.medium
+      - c6g.large
+      - c6g.xlarge
+      - c6g.2xlarge
+      - c6g.4xlarge
+      - c6g.8xlarge
+      - c6g.12xlarge
+      - c6g.16xlarge
+      - c6g.metal
+      - c6gd.medium
+      - c6gd.large
+      - c6gd.xlarge
+      - c6gd.2xlarge
+      - c6gd.4xlarge
+      - c6gd.8xlarge
+      - c6gd.12xlarge
+      - c6gd.16xlarge
+      - c6gd.metal
+      - cc2.8xlarge
+      - cr1.8xlarge
+      - d2.xlarge
+      - d2.2xlarge
+      - d2.4xlarge
+      - d2.8xlarge
+      - f1.2xlarge
+      - f1.4xlarge
+      - f1.16xlarge
+      - g2.2xlarge
+      - g2.8xlarge
+      - g3s.xlarge
+      - g3.4xlarge
+      - g3.8xlarge
+      - g3.16xlarge
+      - h1.2xlarge
+      - h1.4xlarge
+      - h1.8xlarge
+      - h1.16xlarge
+      - hs1.8xlarge
+      - i2.xlarge
+      - i2.2xlarge
+      - i2.4xlarge
+      - i2.8xlarge
+      - i3.large
+      - i3.xlarge
+      - i3.2xlarge
+      - i3.4xlarge
+      - i3.8xlarge
+      - i3.16xlarge
+      - i3.metal
+      - i3en.large
+      - i3en.xlarge
+      - i3en.2xlarge
+      - i3en.3xlarge
+      - i3en.6xlarge
+      - i3en.12xlarge
+      - i3en.24xlarge
+      - inf1.xlarge
+      - inf1.2xlarge
+      - inf1.6xlarge
+      - inf1.24xlarge
+      - m1.small
+      - m1.medium
+      - m1.large
+      - m1.xlarge
+      - m2.xlarge
+      - m2.2xlarge
+      - m2.4xlarge
+      - m3.medium
+      - m3.large
+      - m3.xlarge
+      - m3.2xlarge
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m4.10xlarge
+      - m4.16xlarge
+      - m5.large
+      - m5.xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+      - m5.8xlarge
+      - m5.12xlarge
+      - m5.16xlarge
+      - m5.24xlarge
+      - m5.metal
+      - m5a.large
+      - m5a.xlarge
+      - m5a.2xlarge
+      - m5a.4xlarge
+      - m5a.8xlarge
+      - m5a.12xlarge
+      - m5a.16xlarge
+      - m5a.24xlarge
+      - m5ad.large
+      - m5ad.xlarge
+      - m5ad.2xlarge
+      - m5ad.4xlarge
+      - m5ad.12xlarge
+      - m5ad.24xlarge
+      - m5d.large
+      - m5d.xlarge
+      - m5d.2xlarge
+      - m5d.4xlarge
+      - m5d.8xlarge
+      - m5d.12xlarge
+      - m5d.16xlarge
+      - m5d.24xlarge
+      - m5d.metal
+      - m5dn.large
+      - m5dn.xlarge
+      - m5dn.2xlarge
+      - m5dn.4xlarge
+      - m5dn.8xlarge
+      - m5dn.12xlarge
+      - m5dn.16xlarge
+      - m5dn.24xlarge
+      - m5n.large
+      - m5n.xlarge
+      - m5n.2xlarge
+      - m5n.4xlarge
+      - m5n.8xlarge
+      - m5n.12xlarge
+      - m5n.16xlarge
+      - m5n.24xlarge
+      - m6g.medium
+      - m6g.large
+      - m6g.xlarge
+      - m6g.2xlarge
+      - m6g.4xlarge
+      - m6g.8xlarge
+      - m6g.12xlarge
+      - m6g.16xlarge
+      - m6g.metal
+      - m6gd.medium
+      - m6gd.large
+      - m6gd.xlarge
+      - m6gd.2xlarge
+      - m6gd.4xlarge
+      - m6gd.8xlarge
+      - m6gd.12xlarge
+      - m6gd.16xlarge
+      - m6gd.metal
+      - p2.xlarge
+      - p2.8xlarge
+      - p2.16xlarge
+      - p3.2xlarge
+      - p3.8xlarge
+      - p3.16xlarge
+      - p3dn.24xlarge
+      - g4dn.xlarge
+      - g4dn.2xlarge
+      - g4dn.4xlarge
+      - g4dn.8xlarge
+      - g4dn.12xlarge
+      - g4dn.16xlarge
+      - g4dn.metal
+      - r3.large
+      - r3.xlarge
+      - r3.2xlarge
+      - r3.4xlarge
+      - r3.8xlarge
+      - r4.large
+      - r4.xlarge
+      - r4.2xlarge
+      - r4.4xlarge
+      - r4.8xlarge
+      - r4.16xlarge
+      - r5.large
+      - r5.xlarge
+      - r5.2xlarge
+      - r5.4xlarge
+      - r5.8xlarge
+      - r5.12xlarge
+      - r5.16xlarge
+      - r5.24xlarge
+      - r5.metal
+      - r5a.large
+      - r5a.xlarge
+      - r5a.2xlarge
+      - r5a.4xlarge
+      - r5a.8xlarge
+      - r5a.12xlarge
+      - r5a.16xlarge
+      - r5a.24xlarge
+      - r5ad.large
+      - r5ad.xlarge
+      - r5ad.2xlarge
+      - r5ad.4xlarge
+      - r5ad.12xlarge
+      - r5ad.24xlarge
+      - r5d.large
+      - r5d.xlarge
+      - r5d.2xlarge
+      - r5d.4xlarge
+      - r5d.8xlarge
+      - r5d.12xlarge
+      - r5d.16xlarge
+      - r5d.24xlarge
+      - r5d.metal
+      - r5dn.large
+      - r5dn.xlarge
+      - r5dn.2xlarge
+      - r5dn.4xlarge
+      - r5dn.8xlarge
+      - r5dn.12xlarge
+      - r5dn.16xlarge
+      - r5dn.24xlarge
+      - r5n.large
+      - r5n.xlarge
+      - r5n.2xlarge
+      - r5n.4xlarge
+      - r5n.8xlarge
+      - r5n.12xlarge
+      - r5n.16xlarge
+      - r5n.24xlarge
+      - r6g.medium
+      - r6g.large
+      - r6g.xlarge
+      - r6g.2xlarge
+      - r6g.4xlarge
+      - r6g.8xlarge
+      - r6g.12xlarge
+      - r6g.16xlarge
+      - r6g.metal
+      - r6gd.medium
+      - r6gd.large
+      - r6gd.xlarge
+      - r6gd.2xlarge
+      - r6gd.4xlarge
+      - r6gd.8xlarge
+      - r6gd.12xlarge
+      - r6gd.16xlarge
+      - r6gd.metal
+      - t1.micro
+      - t2.nano
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t2.large
+      - t2.xlarge
+      - t2.2xlarge
+      - t3.nano
+      - t3.micro
+      - t3.small
+      - t3.medium
+      - t3.large
+      - t3.xlarge
+      - t3.2xlarge
+      - t3a.nano
+      - t3a.micro
+      - t3a.small
+      - t3a.medium
+      - t3a.large
+      - t3a.xlarge
+      - t3a.2xlarge
+      - u-6tb1.metal
+      - u-9tb1.metal
+      - u-12tb1.metal
+      - x1.16xlarge
+      - x1.32xlarge
+      - x1e.xlarge
+      - x1e.2xlarge
+      - x1e.4xlarge
+      - x1e.8xlarge
+      - x1e.16xlarge
+      - x1e.32xlarge
+      - z1d.large
+      - z1d.xlarge
+      - z1d.2xlarge
+      - z1d.3xlarge
+      - z1d.6xlarge
+      - z1d.12xlarge
+      - z1d.metal
+    ConstraintDescription: Must be a valid EC2 instance type
+    Description: EC2 instance type for the node instances
+
+  NodeSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup::Id"
+    Description: Security group for all nodes in the cluster.
+
+  NodeSpotPrice:
+    Type: String
+    Description: The spot price for this ASG
+
+  NodeVolumeEncryptionEnabled:
+    Type: String
+    Default: ""
+    Description: Enable node pool node volume encryption (""/"false"/"true").
+    AllowedValues:
+      - "" # Note: unspecified, use default AWS behavior.
+      - "false"
+      - "true"
+
+  NodeVolumeEncryptionKeyARN:
+    Type: String
+    Default: ""
+    Description: KMS encryption key ARN to use for node pool node volume encryption. In case of empty key value, the default AWS EBS encryption key is used.
+
+  NodeVolumeSize:
+    Type: Number
+    Default: 0
+    Description: Node volume size
+
+  StackTags:
+    Type: "String"
+    Default: ""
+    Description: The tags of the stack.
+
+  Subnets:
+    Type: "List<AWS::EC2::Subnet::Id>"
+    Description: The subnets where workers can be created.
+
+  TemplateVersion:
+    Type: String
+    Default: "2.3.0"
+    Description: Current version of the template structure as metainformation for created stacks.
+
+  TerminationDetachEnabled:
+    Type: String
+    Description: Enable detachment from ASG at instance termination (true/false)
+
+  UseInstanceStore:
+      Type: String
+      Default: "false"
+      AllowedValues:
+        - "true"
+        - "false"
+      Description: "Mount and setup available instance stores for Kubelet if available."
+
+  VpcId:
+    Type: "AWS::EC2::VPC::Id"
+    Description: The VPC of the worker instances
+
+
+Mappings:
+  PartitionMap:
+    aws:
+      EC2ServicePrincipal: "ec2.amazonaws.com"
+    aws-us-gov:
+      EC2ServicePrincipal: "ec2.amazonaws.com"
+    aws-cn:
+      EC2ServicePrincipal: "ec2.amazonaws.com.cn"
+    aws-iso:
+      EC2ServicePrincipal: "ec2.c2s.ic.gov"
+    aws-iso-b:
+      EC2ServicePrincipal: "ec2.sc2s.sgov.gov"
+
+Conditions:
+  AutoscalerEnabled:  !Equals [ !Ref ClusterAutoscalerEnabled, "true" ]
+  HasKeyName: !Not [ !Equals [ !Ref KeyName, "" ] ]
+
+  HasNodeImageId: !Not
+    - "Fn::Equals":
+        - !Ref NodeImageId
+        - ""
+
+  IMDSv1Disabled:
+    "Fn::Equals":
+      - !Ref DisableIMDSv1
+      - "true"
+
+  IsNodeVolumeEncryptionSpecified: !Not [ !Equals [ !Ref NodeVolumeEncryptionEnabled, "" ] ]
+  IsNodeVolumeEncryptionKeyARNSpecified: !And
+    - !Equals [ !Ref NodeVolumeEncryptionEnabled, "true" ]
+    - !Not [ !Equals [ !Ref NodeVolumeEncryptionKeyARN, "" ] ]
+  IsSpotInstance: !Not [ !Equals [ !Ref NodeSpotPrice, "" ] ]
+  NoCustomNodeSecurityGroups: !Equals [ !Ref CustomNodeSecurityGroups, "" ]
+  NodeVolumeSizeAuto: !Equals [ !Ref NodeVolumeSize, 0 ]
+
+Resources:
+  # Note: we are using preinitialized node instance roles, possibly specified by
+  # the end user.
+  #
+  # NodeInstanceRole:
+  #   Type: "AWS::IAM::Role"
+  #   Properties:
+  #     AssumeRolePolicyDocument:
+  #       Version: "2012-10-17"
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal:
+  #             Service:
+  #               - !FindInMap [
+  #                   PartitionMap,
+  #                   !Ref "AWS::Partition",
+  #                   EC2ServicePrincipal,
+  #                 ]
+  #           Action:
+  #             - "sts:AssumeRole"
+  #     ManagedPolicyArns:
+  #       - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+  #       - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonEKS_CNI_Policy"
+  #       - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  #     Path: /
+
+  NodeInstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      Path: /
+      Roles:
+        - !Ref NodeInstanceRoleId # Note: deliberately custom parameter.
+
+  # Note: we are using a preinitialized node security group parameter, possibly
+  # specified by the end user.
+  #
+  # NodeSecurityGroup:
+  #   Type: "AWS::EC2::SecurityGroup"
+  #   Properties:
+  #     GroupDescription: Security group for all nodes in the cluster
+  #     Tags:
+  #       - Key: !Sub kubernetes.io/cluster/${ClusterName}
+  #         Value: owned
+  #     VpcId: !Ref VpcId
+
+  NodeSecurityGroupIngress:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    # DependsOn: NodeSecurityGroup # Note: NodeSecurityGroup is preinitialized.
+    Properties:
+      Description: Allow node to communicate with each other
+      FromPort: 0
+      GroupId: !Ref NodeSecurityGroup
+      IpProtocol: "-1"
+      SourceSecurityGroupId: !Ref NodeSecurityGroup
+      ToPort: 65535
+
+  ClusterControlPlaneSecurityGroupIngress:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    # DependsOn: NodeSecurityGroup # Note: NodeSecurityGroup is preinitialized.
+    Properties:
+      Description: Allow pods to communicate with the cluster API Server
+      FromPort: 443
+      GroupId: !Ref ClusterControlPlaneSecurityGroup
+      IpProtocol: tcp
+      SourceSecurityGroupId: !Ref NodeSecurityGroup
+      ToPort: 443
+
+  ControlPlaneEgressToNodeSecurityGroup:
+    Type: "AWS::EC2::SecurityGroupEgress"
+    # DependsOn: NodeSecurityGroup # Note: NodeSecurityGroup is preinitialized.
+    Properties:
+      Description: Allow the cluster control plane to communicate with worker Kubelet and pods
+      DestinationSecurityGroupId: !Ref NodeSecurityGroup
+      FromPort: 0 # Note: unused because of IpProtocol -1.
+      GroupId: !Ref ClusterControlPlaneSecurityGroup
+      IpProtocol: "-1" # Note: deliberately using all protocols and all ports.
+      ToPort: 65535
+
+  # Note: unused because ControlPlaneEgressToNodeSecurityGroup allows all
+  # protocols and ports.
+  #
+  # ControlPlaneEgressToNodeSecurityGroupOn443:
+  #   Type: "AWS::EC2::SecurityGroupEgress"
+  # DependsOn: NodeSecurityGroup # Note: NodeSecurityGroup is preinitialized.
+  #   Properties:
+  #     Description: Allow the cluster control plane to communicate with pods running extension API servers on port 443
+  #     DestinationSecurityGroupId: !Ref NodeSecurityGroup
+  #     FromPort: 443
+  #     GroupId: !Ref ClusterControlPlaneSecurityGroup
+  #     IpProtocol: tcp
+  #     ToPort: 443
+
+  NodeSecurityGroupFromControlPlaneIngress:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    # DependsOn: NodeSecurityGroup # Note: NodeSecurityGroup is preinitialized.
+    Properties:
+      Description: Allow worker Kubelets and pods to receive communication from the cluster control plane
+      FromPort: 0 # Note: unused because of IpProtocol -1.
+      GroupId: !Ref NodeSecurityGroup
+      IpProtocol: "-1" # Note: deliberately using all protocols and all ports.
+      SourceSecurityGroupId: !Ref ClusterControlPlaneSecurityGroup
+      ToPort: 65535
+
+  # Note: unused because NodeSecurityGroupFromControlPlaneIngress allows all
+  # protocols and ports.
+  #
+  # NodeSecurityGroupFromControlPlaneOn443Ingress:
+  #   Type: "AWS::EC2::SecurityGroupIngress"
+  # DependsOn: NodeSecurityGroup # Note: NodeSecurityGroup is preinitialized.
+  #   Properties:
+  #     Description: Allow pods running extension API servers on port 443 to receive communication from cluster control plane
+  #     FromPort: 443
+  #     GroupId: !Ref NodeSecurityGroup
+  #     IpProtocol: tcp
+  #     SourceSecurityGroupId: !Ref ClusterControlPlaneSecurityGroup
+  #     ToPort: 443
+
+  NodeSecurityGroupSsh:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    # DependsOn: NodeSecurityGroup # Note: NodeSecurityGroup is preinitialized.
+    Properties:
+      CidrIp: "0.0.0.0/0"
+      Description: Allow SSH access to node
+      FromPort: 22
+      GroupId: !Ref NodeSecurityGroup
+      IpProtocol: tcp
+      ToPort: 22
+
+  NodeLaunchTemplate:
+    Type: "AWS::EC2::LaunchTemplate"
+    Properties:
+      LaunchTemplateData:
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              DeleteOnTermination: true
+              Encrypted: !If [ IsNodeVolumeEncryptionSpecified, !Ref NodeVolumeEncryptionEnabled , !Ref "AWS::NoValue" ]
+              KmsKeyId: !If [ IsNodeVolumeEncryptionKeyARNSpecified, !Ref NodeVolumeEncryptionKeyARN, !Ref "AWS::NoValue" ]
+              VolumeSize: !If [ NodeVolumeSizeAuto, !Ref "AWS::NoValue", !Ref NodeVolumeSize ]
+              VolumeType: gp2
+        IamInstanceProfile:
+          Arn: !GetAtt NodeInstanceProfile.Arn
+        ImageId: !Ref NodeImageId # Note: deliberately not allowing fallback to NodeImageIdSSMParam.
+        InstanceMarketOptions:
+          !If
+            - IsSpotInstance
+            - MarketType: spot
+              SpotOptions:
+                MaxPrice: !Ref NodeSpotPrice
+                SpotInstanceType: one-time
+            - !Ref "AWS::NoValue"
+        InstanceType: !Ref NodeInstanceType
+        KeyName: !If [ HasKeyName, !Ref KeyName, !Ref "AWS::NoValue" ]
+        SecurityGroupIds:
+          !If [NoCustomNodeSecurityGroups, [!Ref NodeSecurityGroup], !Split [ ",",  !Join [ ",", [ !Ref NodeSecurityGroup, !Ref CustomNodeSecurityGroups ] ]  ] ]
+        TagSpecifications:
+          - ResourceType: volume
+            Tags:
+              - Key: Name
+                Value: !Sub ${ClusterName}-${NodeGroupName}-Volume
+              - Key: !Sub kubernetes.io/cluster/${ClusterName}
+                Value: owned
+        UserData:
+            Fn::Base64:
+                Fn::Sub: |
+                      #!/usr/bin/env bash
+                      set -o xtrace
+                      if [ "${UseInstanceStore}" == "true" ]; then
+                        SSD_NVME_DEVICE_LIST=($(lsblk -l -o name,model | grep "Instance Storage" | cut -d " " -f 1 | sed -e "s/.*/\\/dev\\/&/" || true))
+                        SSD_NVME_DEVICE_COUNT=${!#SSD_NVME_DEVICE_LIST[@]}
+                        RAID_DEVICE=${!RAID_DEVICE:-/dev/md0}
+                        RAID_CHUNK_SIZE=${!RAID_CHUNK_SIZE:-512}
+                        FILESYSTEM_BLOCK_SIZE=${!FILESYSTEM_BLOCK_SIZE:-4096}
+                        STRIDE=$(expr $RAID_CHUNK_SIZE \* 1024 / $FILESYSTEM_BLOCK_SIZE || true)
+                        STRIPE_WIDTH=$(expr $SSD_NVME_DEVICE_COUNT \* $STRIDE || true)
+                        case $SSD_NVME_DEVICE_COUNT in
+                        "0")
+                          echo "No devices found of type Amazon EC2 NVMe Instance Storage"
+                          ;;
+                        "1")
+                          echo "Format nvme device $SSD_NVME_DEVICE_LIST"
+                          mkfs.ext4 -m 0 -b $FILESYSTEM_BLOCK_SIZE $SSD_NVME_DEVICE_LIST
+                          DEVICE=$SSD_NVME_DEVICE_LIST
+                          ;;
+                        *)
+                          yum install mdadm -y
+                          mdadm --create --verbose $RAID_DEVICE --level=0 -c ${!RAID_CHUNK_SIZE} --raid-devices=${!#SSD_NVME_DEVICE_LIST[@]} ${!SSD_NVME_DEVICE_LIST[*]}
+                          while [ -n "$(mdadm --detail $RAID_DEVICE | grep -ioE 'State :.*resyncing')" ]; do
+                            echo "Raid is resyncing.."
+                            sleep 1
+                          done
+                          echo "Raid0 device $RAID_DEVICE has been created with disks ${!SSD_NVME_DEVICE_LIST[*]}"
+                          mkfs.ext4 -m 0 -b $FILESYSTEM_BLOCK_SIZE -E stride=$STRIDE,stripe-width=$STRIPE_WIDTH $RAID_DEVICE
+                          DEVICE=$RAID_DEVICE
+                          ;;
+                        esac
+                        if [ $SSD_NVME_DEVICE_COUNT -gt 0 ]; then
+                          mkdir /media/local
+                          mount -o defaults,noatime,discard,nobarrier $DEVICE /media/local
+                          mkdir /media/local/kubelet
+                          /etc/eks/bootstrap.sh ${ClusterName} --kubelet-extra-args '--root-dir /media/local/kubelet ${KubeletExtraArguments}' ${BootstrapArguments}
+                        else
+                          /etc/eks/bootstrap.sh ${ClusterName} --kubelet-extra-args '${KubeletExtraArguments}' ${BootstrapArguments}
+                        fi
+                      else
+                        /etc/eks/bootstrap.sh ${ClusterName} --kubelet-extra-args '${KubeletExtraArguments}' ${BootstrapArguments}
+                      fi
+
+                      # Note: manually applying stack tags onto root EBS
+                      # volumes, because automatic tag propagation for Amazon
+                      # EBS volumes created from block device mappings is not
+                      # supported as of 2021-03-11, source:
+                      # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-resource-tags.html
+                      # > All stack-level tags, including automatically created
+                      # > tags, are propagated to resources that CloudFormation
+                      # > supports. Currently, tags aren't propagated to Amazon
+                      # > EBS volumes that are created from block device
+                      # > mappings.
+                      if [ "${StackTags}" != "" ]; then
+                        STACK_TAG_ARGUMENTS=""
+                        for TAG in $(echo -n "${StackTags}" | tr "," "\n"); do
+                          TAG_KEY=$(echo -n "$TAG" | cut -d "=" -f 1)
+                          TAG_VALUE=$(echo -n "$TAG" | cut -d "=" -f 2)
+
+                          STACK_TAG_ARGUMENTS="$STACK_TAG_ARGUMENTS Key=$TAG_KEY,Value=$TAG_VALUE"
+                        done
+
+                        AWS_AVAIL_ZONE=$(curl http://169.254.169.254/latest/meta-data/placement/availability-zone)
+                        AWS_REGION="$(echo "$AWS_AVAIL_ZONE" | sed 's/[a-z]$//')"
+                        AWS_INSTANCE_ID=$(curl http://169.254.169.254/latest/meta-data/instance-id)
+                        ROOT_VOLUME_IDS=$(aws ec2 describe-instances --region $AWS_REGION --instance-id $AWS_INSTANCE_ID --output text --query Reservations[0].Instances[0].BlockDeviceMappings[0].Ebs.VolumeId)
+                        # Note: the lack of quotes around the tag arguments is intentional.
+                        aws ec2 create-tags --resources $ROOT_VOLUME_IDS --region $AWS_REGION --tags $STACK_TAG_ARGUMENTS
+                      fi
+        MetadataOptions:
+          HttpPutResponseHopLimit: 2
+          HttpEndpoint: enabled
+          HttpTokens: !If
+            - IMDSv1Disabled
+            - required
+            - optional
+
+  NodeGroup:
+    Type: "AWS::AutoScaling::AutoScalingGroup"
+    Properties:
+      DesiredCapacity: !Ref NodeAutoScalingInitSize
+      LaunchTemplate:
+        LaunchTemplateId: !Ref NodeLaunchTemplate
+        Version: !GetAtt NodeLaunchTemplate.LatestVersionNumber
+      MaxSize: !Ref NodeAutoScalingGroupMaxSize
+      MinSize: !Ref NodeAutoScalingGroupMinSize
+      Tags:
+        - Key: Name
+          PropagateAtLaunch: true
+          Value: !Sub ${ClusterName}-${NodeGroupName}-Node
+        - Key: !Sub kubernetes.io/cluster/${ClusterName}
+          PropagateAtLaunch: true
+          Value: owned
+        - Key: !If [ AutoscalerEnabled, k8s.io/cluster-autoscaler/enabled, k8s.io/cluster-autoscaler/disabled ]
+          PropagateAtLaunch: false
+          Value: true
+        - Key: "bzc:detach-asg-instance-on-termination"
+          PropagateAtLaunch: false
+          Value: !Sub ${TerminationDetachEnabled}
+      VPCZoneIdentifier: !Ref Subnets
+
+    {{- if .UpdatePolicyEnabled }}
+    UpdatePolicy:
+      AutoScalingRollingUpdate:
+        MaxBatchSize: !Ref NodeAutoScalingGroupMaxBatchSize
+        MinInstancesInService: !If [ IsSpotInstance, 0, !Ref NodeAutoScalingGroupMinInstancesInService ] # Note: incompatible with spot instances.
+        PauseTime: PT5M
+    {{- end}}
+
+Outputs:
+  # Note: node instance role is preinitialized.
+  #
+  # NodeInstanceRole:
+  #   Description: The node instance role
+  #   Value: !GetAtt NodeInstanceRole.Arn
+
+  # Note: node security group is preinitialized.
+  # NodeSecurityGroup:
+  #   Description: The security group for the node group
+  #   Value: !Ref NodeSecurityGroup
+
+  NodeAutoScalingGroup:
+    Description: The autoscaling group
+    Value: !Ref NodeGroup

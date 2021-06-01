@@ -1,0 +1,120 @@
+{
+  "issue": {
+    "enabled": true
+  },
+  "dashboard": {
+    "enabled": true
+  },
+  "storage": {
+    "enabled": true
+  },
+  "federation": {
+    "enabled": true
+  },
+  "serviceMesh": {
+    "enabled": false
+  },
+  "disasterRecovery": {
+    "enabled": true
+  },
+  "securityScan": {
+    "enabled": true
+  },
+  "authProviders": {
+    "enabled": true
+  },
+  "registry": {
+    "enabled": true
+  },
+  "singleClusterDeployments": {
+    "enabled": true
+  },
+  "multiClusterDeployments": {
+    "enabled": true
+  },
+  "cluster": {
+    "enabled": true
+  },
+  "secret": {
+    "enabled": true
+  },
+  "menuGroup": {
+    "application": {
+      "enabled": true
+    },
+    "infrastructure": {
+      "enabled": true
+    },
+    "security": {
+      "enabled": true
+    },
+    "integration": {
+      "enabled": true
+    },
+    "deployments": {
+      "enabled": true
+    }
+  },
+  "nodePoolLabeling": {
+    "enabled": true
+  },
+  "horizontalPodAutoscaler": {
+    "enabled": true
+  },
+  "onDemandNodeAffinity": {
+    "enabled": true
+  },
+  "controlPlaneBanner": {
+    "enabled": true
+  },
+  "multiClusterDeployment": {
+    "enabled": true
+  },
+  "clusterAddonList": {
+    "enabled": true
+  },
+  "applicationAccessTokens": {
+    "enabled": false
+  },
+  "features": {
+    "monitoring": {
+      "enabled": true,
+      "createClusterFlow": {
+        "enabled": true
+      }
+    },
+    "securityScan": {
+      "enabled": true,
+      "createClusterFlow": {
+        "enabled": true
+      }
+    },
+    "vault": {
+      "enabled": true
+    },
+    "logging": {
+      "enabled": true,
+      "createClusterFlow": {
+        "enabled": true
+      }
+    },
+    "backup": {
+      "enabled": true
+    },
+    "dns": {
+      "enabled": true
+    },
+    "storageClass": {
+      "enabled": true
+    },
+    "containerRegistry": {
+      "enabled": true
+    },
+    "expiry": {
+      "enabled": true
+    },
+    "advancedNetwork": {
+      "enabled": true
+    }
+  }
+}

@@ -1,0 +1,69 @@
+github_repo(
+    name = "pleasings2",
+    repo = "sagikazarmark/mypleasings",
+    revision = "09137dd3e633e2c4dc37f8b840e824a9ceb35d3e",
+)
+
+genrule(
+    name = "docker-compose.override.yml",
+    srcs = ["docker-compose.override.yml.dist"],
+    outs = ["docker-compose.override.yml"],
+    cmd = "cat docker-compose.override.yml.dist | sed -e \"s/# user: \\\"\\\\${uid}:\\\\${gid}\\\"/user: \\\"$(id -u):$(id -g)\\\"/\" > \"$OUTS\"" if CONFIG.HOSTOS == "linux" else 'cp docker-compose.override.yml.dist "$OUTS"',
+)
+
+sh_cmd(
+    name = "up",
+    cmd = [
+        "if [ ! -f etc/config/dex.yml ]; then plz make //etc/config:dex.yml; fi",
+        "if [ ! -f config/ui/feature-set.json ]; then plz make //config/ui:feature-set.json; fi",
+        "if [ ! -f config/config.yaml ]; then plz make //config:config.yaml; fi",
+        "$(out_location :start)",
+    ],
+    deps = [":start"],
+)
+
+sh_cmd(
+    name = "down",
+    cmd = [
+        "docker-compose down -v",
+        "sudo rm -rf .docker/" if CONFIG.HOSTOS == "linux" else "rm -rf .docker/",
+    ],
+)
+
+sh_cmd(
+    name = "start",
+    cmd = [
+        "if [ ! -f docker-compose.override.yml ]; then plz make :docker-compose.override.yml; fi",
+        "mkdir -p .docker/volumes/{mysql,vault/file,vault/keys}",
+        "docker-compose up -d",
+    ],
+)
+
+sh_cmd(
+    name = "stop",
+    cmd = "docker-compose stop",
+)
+
+_os = {
+    "darwin": "Darwin",
+    "linux": "Linux",
+}
+
+remote_file(
+    name = "kube-apiserver",
+    out = "bin/kube-apiserver",
+    binary = True,
+    url = "https://storage.googleapis.com/k8s-c10s-test-binaries/kube-apiserver-%s-x86_64" % (_os[CONFIG.HOSTOS]),
+)
+
+remote_file(
+    name = "etcd",
+    out = "bin/etcd",
+    binary = True,
+    url = "https://storage.googleapis.com/k8s-c10s-test-binaries/etcd-%s-x86_64" % (_os[CONFIG.HOSTOS]),
+)
+
+http_archive(
+    name = "pleasegomod",
+    urls = [f"https://github.com/sagikazarmark/please-go-modules/releases/download/v0.0.19/godeps_{CONFIG.HOSTOS}_{CONFIG.HOSTARCH}.tar.gz"],
+)

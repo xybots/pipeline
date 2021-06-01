@@ -1,0 +1,182 @@
+# Default values for pipeline
+
+
+## Resource definitions for Kubernetes resources
+replicaCount: 1
+# Upgrade strategy
+strategy:
+  type: Recreate
+  # this must be set to aviod issues when the chart is upgraded from rollingUpdate type
+  # https://github.com/helm/helm/issues/5144#issuecomment-512758270
+  rollingUpdate: null
+
+## Additional entries to the hosts
+hostAliases: []
+#  - ip: "127.0.0.1"
+#    hostnames:
+#      - "foo.local"
+#      - "bar.local"
+
+image:
+  repository: banzaicloud/pipeline
+  tag: 0.45.0
+  pullPolicy: IfNotPresent
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+worker:
+  ## Resource definitions for Kubernetes resources
+  replicaCount: 1
+  # Upgrade strategy
+  strategy: {}
+  ## Additional entries to the hosts
+  ## configuration is taken from the root level if not specified otherwise
+  hostAliases: []
+#    - ip: "127.0.0.1"
+#      hostnames:
+#        - "foo.local"
+#        - "bar.local"
+  # Image configuration is taken from the root level if not specified otherwise
+  image: {}
+    # repository: banzaicloud/pipeline
+    # tag: 0.40.0
+    # pullPolicy: IfNotPresent
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+  ## Additional deployment labels and annotations
+  ## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+  deploymentLabels: {}
+  deploymentAnnotations: {}
+
+  ## Additional environment variables to set
+  extraEnvs: []
+  # extraEnvs:
+  #   - name: FOO
+  #     valueFrom:
+  #       secretKeyRef:
+  #         key: FOO
+  #         name: secret-resource
+
+  extraVolumeMounts: []
+  ## Additional volumeMounts to the controller main container.
+  #  - name: copy-portal-skins
+  #   mountPath: /var/lib/lemonldap-ng/portal/skins
+
+  extraVolumes: []
+  ## Additional volumes to the controller pod.
+  #  - name: copy-portal-skins
+  #    emptyDir: {}
+
+service:
+  name: pipeline
+  type: ClusterIP
+  internalPort: 9090
+  externalPort:  9090
+  # TLS is always enabled, when the following secrets names are
+  # not specified a Helm generated CA and certificate will be used.
+  tls:
+    # Name of the kubernetes.io/tls type Secret holding the
+    # client/server key pair for authentication and the CA certificate.
+    secretName: ""
+
+serviceMonitor:
+  enabled: false
+  labels: {}
+
+ingress:
+  enabled: false
+  annotations: {}
+    #traefik.frontend.rule.type: PathPrefix
+  hosts: []
+    # - "/"
+    # - "domain.com/xyz"
+    # - "domain.com"
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+## Additional environment variables to set
+extraEnvs: []
+# extraEnvs:
+#   - name: FOO
+#     valueFrom:
+#       secretKeyRef:
+#         key: FOO
+#         name: secret-resource
+
+extraVolumeMounts: []
+## Additional volumeMounts to the controller main container.
+#  - name: copy-portal-skins
+#   mountPath: /var/lib/lemonldap-ng/portal/skins
+
+extraVolumes: []
+## Additional volumes to the controller pod.
+#  - name: copy-portal-skins
+#    emptyDir: {}
+
+## Additional deployment labels and annotations
+## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+deploymentLabels: {}
+deploymentAnnotations: {}
+
+## Pipeline metrics, rules and alerting configuration
+metrics:
+  enabled: false
+  port: 9900
+
+## The Pipeline configuration definition
+configuration:
+  # Authentication
+  auth:
+    oidc:
+      clientId: ""
+      clientSecret: ""
+
+    token:
+      signingKey: ""
+
+  # Pipeline configs
+  pipeline:
+    basePath: /pipeline
+    caCertFile: /tls/ca.crt
+    certFile: /tls/tls.crt
+    keyFile: /tls/tls.key
+
+  # Cluster integrated service settings
+  cluster:
+    securityScan:
+      anchore:
+        enabled: false
+        user: admin
+        secretName: ""
+        secretKey: adminPassword
+
+  # Database configuration
+  database:
+    # mysql, postgres
+    driver: ""
+    host: ""
+    port: ""
+    tls: "false"
+    name: "pipeline"
+    user: "pipeline"
+    password: ""
+
+  # Vault related configuration
+  vault:
+    address: ""
+    insecure: false
+
+serviceAccount:
+  create: true
+  name:
+
+

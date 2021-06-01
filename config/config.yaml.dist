@@ -1,0 +1,412 @@
+# This is the example configuration for Pipeline
+
+# Pipeline logging configuration
+#log:
+#    level: "info"
+#    format: "json"
+
+#telemetry:
+#    enabled: false
+#    addr: "127.0.0.1:9900"
+#
+#    # if true, some metrics have unique labels
+#    debug: true
+
+pipeline:
+    # An UUID that identifies the specific installation (deployment) of the platform.
+    # If a good UUID is not available, do not generate one automatically, because no UUID is better than one that always changes.
+    # uuid: ""
+
+#    addr: "127.0.0.1:9090"
+
+    # URL base path
+#    basePath: ""
+
+    caCertFile: ""
+    certFile: ""
+    keyFile: ""
+
+    external:
+        # Base URL where the end users can reach this pipeline instance
+        url: ""
+#        insecure: false
+
+#   enterprise: false
+
+database:
+    # dialect: "postgres"
+    dialect: "mysql"
+    host: "localhost"
+    # port: 5432
+    port: 3306
+    # tls: "disable"
+    tls: "false"
+    user: ""
+    # role: ""
+    password: ""
+    name: "pipeline"
+
+    # Turn this to true to see all queries in the log
+#    queryLog: false
+
+#    autoMigrate: false
+
+cadence:
+    host: ""
+#    port: 7933
+#    domain: "pipeline"
+#    createNonexistentDomain: false
+#    workflowExecutionRetentionPeriodInDays: 3
+
+#auditLog:
+#    enabled: true
+#
+#    driver:
+#        log:
+#            enabled: false
+#            verbosity: 1
+#            fields:
+#                - timestamp
+#                - correlationID
+#                - userID
+#                - http.method
+#                - http.path
+#                - http.clientIP
+#                - http.userAgent
+#                - http.statusCode
+#                - http.responseTime
+#                - http.responseSize
+#                - http.requestBody
+#                - http.errors
+#
+#        database:
+#            enabled: true
+
+#cors:
+#    # Note: this should be disabled in production!
+#    # TODO: disable all orgins by default?
+#    allowAllOrigins: true
+#    allowOrigins: []
+#    allowOriginsRegexp: ""
+
+auth:
+    oidc:
+        issuer: ""
+#        insecure: false
+        clientId: ""
+        clientSecret: ""
+
+#    cli:
+#        clientId: "banzai-cli"
+
+#    redirectUrl:
+#        login: "/ui"
+#        signup: "/ui"
+
+#    cookie:
+#        secure: true
+#        domain: ""
+#        setDomain: false
+
+#    role:
+#        default: "admin"
+#        binding:
+#            admin: ".*"
+#            member: ""
+
+    token:
+        signingKey: ""
+        issuer: ""
+        audience: ""
+
+dex:
+    apiAddr: ""
+    # apiCa: ""
+
+#kubernetes:
+#    client:
+#        # Deny connecting to API servers other than ones listening on globally routable IPv4 addresses
+#        # This will be refactored according to https://github.com/banzaicloud/pipeline/issues/2263
+#        forceGlobal: false
+
+#cluster:
+#    # An initial Kubernetes manifest to be installed on clusters.
+#    # It accepts a file path with valid YAML templates inside.
+#    manifest: ""
+#
+#    # Namespace to install components to
+#    namespace: "pipeline-system"
+#
+#    ingress:
+#        enabled: true
+#
+#    labels:
+#        # Inherited from cluster.namespace when empty
+#        namespace: ""
+#
+#        domain: banzaicloud.io
+#        forbiddenDomains: [
+#            "k8s.io",
+#            "kubernetes.io",
+#            "google.com",
+#            "coreos.com",
+#            "oraclecloud.com",
+#            "node.info",
+#            "azure.com",
+#            "agentpool",
+#            "storageprofile",
+#            "storagetier"
+#        ]
+#
+#        charts:
+#            nodepoolLabelOperator:
+#                chart: "banzaicloud-stable/nodepool-labels-operator"
+#                version: "0.1.1"
+#
+#                # See https://github.com/banzaicloud/nodepool-labels-operator/tree/master/charts/nodepool-labels-operator for details
+#                values: {}
+#
+#    vault:
+#        enabled: true
+#
+#        # Inherited from cluster.namespace when empty
+#        namespace: ""
+#
+#        managed:
+#            enabled: false
+#            endpoint: ""
+#
+#        charts:
+#            webhook:
+#                chart: "banzaicloud-stable/vault-secrets-webhook"
+#                version: "1.10.1"
+#
+#                # See https://github.com/banzaicloud/bank-vaults/tree/master/charts/vault-secrets-webhook for details
+#                values: {}
+#
+#    monitoring:
+#        enabled: true
+#
+#        # Inherited from cluster.namespace when empty
+#        namespace: ""
+#
+#        grafana:
+#            adminUser: admin
+#
+#        charts:
+#            operator:
+#                chart: "prometheus-community/kube-prometheus-stack"
+#                version: "12.11.3"
+#
+#                # See https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack for details
+#                values: {}
+#
+#            pushgateway:
+#                chart: "prometheus-community/prometheus-pushgateway"
+#                version: "1.5.1"
+#
+#                # See https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus-pushgateway for details
+#                values: {}
+#
+#    logging:
+#        enabled: true
+#
+#        # Inherited from cluster.namespace when empty
+#        namespace: ""
+#
+#        charts:
+#            operator:
+#                chart: "banzaicloud-stable/logging-operator"
+#                version: "2.7.2"
+#
+#                # See https://github.com/banzaicloud/logging-operator/tree/master/charts/logging-operator for details
+#                values: {}
+#
+#            loki:
+#                chart: "banzaicloud-stable/loki"
+#                version: "0.17.4"
+#
+#                # See https://github.com/banzaicloud/banzai-charts/tree/master/loki for details
+#                values: {}
+#
+#    dns:
+#        enabled: true
+#
+#        # Inherited from cluster.namespace when empty
+#        namespace: ""
+#
+#        # Base domain used for Pipeline DNS provider
+#        baseDomain: ""
+#
+#        # Vault secret path (API v1) of the credentials to be used for Banzai DNS
+#        providerSecret: "secret/data/banzaicloud/aws"
+#
+#        charts:
+#            externalDns:
+#                chart: "bitnami/external-dns"
+#                version: "4.5.0"
+#
+#                # See https://github.com/bitnami/charts/tree/master/bitnami/external-dns for details
+#                values: {}
+#
+#    securityScan:
+#        enabled: true
+#        anchore:
+#            enabled: false
+#            endpoint: ""
+#            user: ""
+#            password: ""
+#            insecure: false
+#            # The path of the directory that contains Banzai Cloud default policies
+#            # The Pipeline docker image contains the /policies directory
+#            policyPath: "/policies"
+#
+#    expiry:
+#        enabled: true
+#
+#    autoscale:
+#        # Inherited from cluster.namespace when empty
+#        namespace: ""
+#
+#        charts:
+#            clusterAutoscaler:
+#                chart: "stable/cluster-autoscaler"
+#                version: "7.1.0"
+#                imageVersionConstraints:
+#                    - k8sVersion: "<=1.12.x"
+#                      tag: "v1.12.8"
+#                      repository: "gcr.io/google-containers/cluster-autoscaler"
+#                    - k8sVersion: "~1.13"
+#                      tag: "v1.13.9"
+#                      repository: "gcr.io/google-containers/cluster-autoscaler"
+#                    - k8sversion: "~1.14"
+#                      tag: "v1.14.7"
+#                      repository: "gcr.io/google-containers/cluster-autoscaler"
+#                    - k8sversion: "~1.15"
+#                      tag: "v1.15.4"
+#                      repository: "gcr.io/google-containers/cluster-autoscaler"
+#                    - k8sVersion: "~1.16"
+#                      tag: "v1.16.7"
+#                      repository: "k8s.gcr.io/autoscaling/cluster-autoscaler"
+#                    - k8sVersion: "~1.17"
+#                      tag: "v1.17.4"
+#                      repository: "k8s.gcr.io/autoscaling/cluster-autoscaler"
+#                    - k8sVersion: "~1.18"
+#                      tag: "v1.18.3"
+#                      repository: "k8s.gcr.io/autoscaling/cluster-autoscaler"
+#                    - k8sVersion: ">=1.19"
+#                      tag: "v1.19.1"
+#                      repository: "k8s.gcr.io/autoscaling/cluster-autoscaler"
+#                    - k8sVersion: ">=1.20"
+#                      tag: "v1.20.0"
+#                      repository: "k8s.gcr.io/autoscaling/cluster-autoscaler"
+#
+#                # See https://github.com/banzaicloud/banzai-charts/tree/master/cluster-autoscaler for details
+#                values: {}
+#
+#    disasterRecovery:
+#        enabled: true
+#
+#        runAsIntegratedServiceV2: false
+#
+#        # Inherited from cluster.namespace when empty
+#        namespace: ""
+#
+#        ark:
+#            syncEnabled: true
+#            bucketSyncInterval: "10m"
+#            restoreSyncInterval: "20s"
+#            backupSyncInterval: "20s"
+#            restoreWaitTimeout: "5m"
+#
+#        charts:
+#            ark:
+#                chart: "banzaicloud-stable/velero"
+#                version: "2.13.3-bc.1"
+#
+#                # See https://github.com/banzaicloud/velero-helm-chart for details
+#                values: {}
+#
+#    posthook:
+#        ingress:
+#            enabled: true
+#            chart: "banzaicloud-stable/pipeline-cluster-ingress"
+#            version: "0.0.8"
+#
+#            # See https://github.com/helm/charts/tree/master/stable/traefik for details
+#            values: |
+#              traefik:
+#                ssl:
+#                  enabled: true
+#                  generateTLS: true
+#
+#        dashboard:
+#            enabled: false
+#            chart: "banzaicloud-stable/kubernetes-dashboard"
+#            version: "0.9.1"
+#
+#        spotconfig:
+#            enabled: false
+#            charts:
+#                scheduler:
+#                    chart: "banzaicloud-stable/spot-scheduler"
+#                    version: "0.1.2"
+#                webhook:
+#                    chart: "banzaicloud-stable/spot-config-webhook"
+#                    version: "0.1.6"
+#
+#        ith:
+#            enabled: true
+#            chart: "banzaicloud-stable/instance-termination-handler"
+#            version: "0.0.9"
+#
+#        autoscaler:
+#            enabled: true
+
+
+#helm:
+#    home: "./var/cache"
+#    repositories:
+#        stable: "https://charts.helm.sh/stable"
+#        banzaicloud-stable: "https://kubernetes-charts.banzaicloud.com"
+#        bitnami: "https://charts.bitnami.com/bitnami"
+#        loki: "https://grafana.github.io/loki/charts"
+#        prometheus-community: "https://prometheus-community.github.io/helm-charts"
+
+#cloud:
+#    amazon:
+#        # Default Amazon region
+#        defaultRegion: "us-west-1"
+
+#distribution:
+#    eks:
+#
+#        # EKS Cloud Formation template location
+#        templateLocation: ./templates/eks
+#
+#        defaultNodeVolumeEncryption:
+#            enabled: false
+#            encryptionKeyARN: ""
+#
+#        defaultNodeVolumeSize: 0 # GB, 0/fallback: max(50, AMISize)
+#
+#        # Expose admin kubeconfig over the API by default.
+#        # Set this to false to remove credentials from the config and make the user responsible for how they authenticate.
+#        exposeAdminKubeconfig: true
+#        ssh:
+#            generate: true
+#
+#    pke:
+#        amazon:
+#            globalRegion: us-east-1
+#            defaultImages: {}
+#            defaultNetworkProvider: "cilium"
+#            defaultNodeVolumeSize: 0 # GiB, 0/fallback: max(50, AMISize)
+
+cloudinfo:
+    # Format: {baseUrl}/api/v1
+    endpoint: ""
+
+#secret:
+#    tls:
+#        defaultValidity: 8760h # 1 year

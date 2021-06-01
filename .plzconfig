@@ -1,0 +1,49 @@
+[please]
+version = 16.0.1
+
+[build]
+PassUnsafeEnv = VAULT_ADDR
+PassUnsafeEnv = VAULT_TOKEN
+
+[go]
+ImportPath = github.com/banzaicloud/pipeline
+GoTestRootCompat = True
+
+[buildconfig]
+golangci-lint-version = 1.30.0
+openapi-generator-version = v4.3.1
+gotestsum-version = 0.4.1
+mga-version = 0.4.2
+licensei-version = 0.2.0
+migrate-version = 4.9.1
+kubectl-version = 1.20.5
+helm-version = 3.5.3
+wollemi-version = 0.7.0
+
+[alias "tidy"]
+desc = Tidy generates build targets for dependencies and makes sure that BUILD files are up-to-date.
+cmd = run //tools:plz-tidy
+
+[alias "make"]
+desc = Build and export the outputs of targets
+cmd = export outputs -o .
+
+[alias "lint"]
+desc = Runs linters for this repo
+cmd = run ///pleasings2//tools/go:golangci-lint -- run
+
+[alias "up"]
+desc = Set up and start the development environment
+cmd = run :up
+
+[alias "down"]
+desc = Destroy the development environment
+cmd = run :down
+
+[alias "start"]
+desc = Start the development environment
+cmd = run :start
+
+[alias "stop"]
+desc = Stop the development environment
+cmd = run :stop

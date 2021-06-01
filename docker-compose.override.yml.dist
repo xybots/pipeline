@@ -1,0 +1,113 @@
+version: "3.1"
+
+services:
+    mysql:
+        # needed for Linux users
+        # user: "${uid}:${gid}"
+        ports:
+            - 127.0.0.1:3306:3306
+        volumes:
+            - ./.docker/volumes/mysql:/var/lib/mysql
+
+    postgres:
+        image: postgres:9.6
+        environment:
+            POSTGRES_DB: pipeline
+            POSTGRES_USER: sparky
+            POSTGRES_PASSWORD: sparky123
+            PGDATA: /var/lib/postgresql/data/pgdata/
+        ports:
+            - 127.0.0.1:5432:5432
+        volumes:
+            - ./.docker/volumes/postgres:/var/lib/postgresql/data/pgdata/
+            - ${PWD}/database/docker-init-postgres.sql:/docker-entrypoint-initdb.d/docker-init.sql
+
+    vault:
+        ports:
+            - 127.0.0.1:8200:8200
+        volumes:
+            - ./.docker/volumes/vault/file:/vault/file
+
+    vault-unsealer:
+        # needed for Linux users
+        # user: "${uid}:${gid}"
+        volumes:
+            - ./.docker/volumes/vault/keys:/vault/keys
+
+    vault-configurer:
+        # needed for Linux users
+        # user: "${uid}:${gid}"
+        volumes:
+            - ./.docker/volumes/vault/keys:/vault/keys
+
+    vault-token-helper:
+        # needed for Linux users
+        # user: "${uid}:${gid}"
+        volumes:
+            - ./.docker/volumes/vault/keys:/vault/keys
+
+    ui:
+        image: banzaicloud/pipeline-web:latest
+        environment:
+            CLOUDINFO_URL: http://localhost:4200/cloudinfo
+            RECOMMENDER_URL: http://localhost:4200/recommender
+            API_URL: https://localhost:9090
+
+    uiproxy:
+        build: etc/docker/uiproxy
+        ports:
+            - 127.0.0.1:4200:80
+        volumes:
+            - ./config/ui/feature-set.json:/usr/share/nginx/html/assets/config/feature-set.json
+
+    dex:
+        ports:
+            - 127.0.0.1:5556:5556
+            - 127.0.0.1:5557:5557
+            - 127.0.0.1:5558:5558
+
+    cadence:
+        ports:
+            - 127.0.0.1:7933:7933
+            - 127.0.0.1:7934:7934
+            - 127.0.0.1:7935:7935
+
+    cadence-web:
+        ports:
+            - 127.0.0.1:8088:8088
+
+# Uncomment the following two services to enable Anchore.
+#    anchore-engine:
+#        image: docker.io/anchore/anchore-engine:v0.8.0
+#        depends_on:
+#            - postgres
+#        environment:
+#            - ANCHORE_HOST_ID=dockerhostid-anchore-engine
+#            - ANCHORE_ENDPOINT_HOSTNAME=anchore-engine
+#        ports:
+#            - "8228:8228"
+#            - "8338:8338"
+#        volumes:
+#            - ./etc/config/anchore.yaml:/config/config.yaml:z
+#
+#     ldap:
+#         image: osixia/openldap:1.3.0
+#         ports:
+#             - 127.0.0.1:389:389
+#         volumes:
+#             - ldap-config:/container/service/slapd/assets/config/bootstrap/ldif/custom/
+#         environment:
+#             LDAP_REMOVE_CONFIG_AFTER_SETUP: "false"
+#             LDAP_TLS: "false"
+#         depends_on:
+#             - ldap-config
+#
+#     ldap-config:
+#         image: osixia/openldap:1.3.0
+#         command: cp /tmp/ldap.ldif /ldap-config/
+#         volumes:
+#             - ./etc/config/ldap.ldif:/tmp/ldap.ldif
+#             - ldap-config:/ldap-config
+
+# volumes:
+#   ldap-config:
